@@ -1,0 +1,53 @@
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  darkMode: "class",
+  content: ["./src/**/*.{js,jsx,ts,tsx}"],
+  presets: [require("nativewind/preset")],
+  theme: {
+    extend: {
+      colors: {
+        canvas: "#FBFAF8",
+        surface: "#FFFFFF",
+        "surface-muted": "#F5F6F8",
+        ink: "#111318",
+        muted: "#657083",
+        subtle: "#9099A8",
+        line: "#E3E6EA",
+        brand: "#075FFF",
+        "brand-pressed": "#004BD6",
+        "brand-soft": "#EAF2FF",
+        safe: "#159447",
+        "safe-soft": "#EAF8EF",
+        caution: "#F4A51C",
+        "caution-soft": "#FFF4DF",
+        advanced: "#E87816",
+        "advanced-soft": "#FFF3E8",
+        danger: "#E93434",
+        "danger-soft": "#FFF0F0",
+        camera: "#151515",
+        overlay: "rgba(0,0,0,0.45)",
+        dark: {
+          canvas: "#111419",
+          surface: "#1C2027",
+          muted: "#A9B2C0",
+          ink: "#F4F6F8",
+          line: "#343A45",
+          "brand-soft": "#172B4D",
+          "safe-soft": "#143322",
+          "caution-soft": "#3B2B12",
+          "danger-soft": "#3B191B",
+        },
+      },
+      borderRadius: {
+        small: "10px",
+        card: "18px",
+        control: "14px",
+        hero: "28px",
+      },
+      boxShadow: {
+        card: "0 3px 14px rgba(17, 19, 24, 0.06)",
+      },
+    },
+  },
+  plugins: [],
+};

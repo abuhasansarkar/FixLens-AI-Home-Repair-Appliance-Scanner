@@ -1,0 +1,21 @@
+appId: com.fixlens.ai
+env:
+  TEST_EMAIL: ${MAESTRO_TEST_EMAIL}
+  TEST_PASSWORD: ${MAESTRO_TEST_PASSWORD}
+---
+- launchApp:
+    clearState: true
+- tapOn: "I already have an account"
+- tapOn: "Email address"
+- inputText: ${TEST_EMAIL}
+- tapOn: "Password"
+- inputText: ${TEST_PASSWORD}
+- tapOn: "Sign In"
+- extendedWaitUntil:
+    visible: "Home"
+    timeout: 20000
+- assertVisible: "Scan"
+- assertVisible: "Repairs"
+- assertVisible: "My Home"
+- assertVisible: "Profile"
+

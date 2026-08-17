@@ -1,0 +1,27 @@
+import { useQuery } from "convex/react";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { Calculator, Crown, Lightbulb } from "lucide-react-native";
+import { useState } from "react";
+import { TextInput, View } from "react-native";
+
+import { AppScreen } from "@/components/ui/app-screen";
+import { Button } from "@/components/ui/button";
+import { Card } from "@/components/ui/card";
+import { Header } from "@/components/ui/header";
+import { AppText } from "@/components/ui/typography";
+import { serviceReadiness } from "@/config/env";
+import { colors } from "@/constants/design";
+import { useHome } from "@/features/home/home-context";
+import { convexApi } from "@/services/convex-references";
+
+function Comparison() {
+  const { applianceId } = useLocalSearchParams<{ applianceId: string }>(); const { appliances } = useHome(); const appliance = appliances.find((item) => item.id === applianceId); const [openedAt] = useState(Date.now);
+  const derivedAge = appliance?.purchaseDate ? Math.max(0, (openedAt - appliance.purchaseDate) / 31_557_600_000) : undefined;
+  const [age, setAge] = useState(derivedAge ? derivedAge.toFixed(1) : ""); const [repairCost, setRepairCost] = useState(""); const [replacementCost, setReplacementCost] = useState("");
+  const ageNumber = Number(age); const repair = Number(repairCost); const replacement = Number(replacementCost); const valid = age !== "" && repair > 0 && replacement > 0; const ratio = valid ? repair / replacement : 0;
+  const recommendation = !valid ? "Add all three estimates" : ageNumber >= 12 || ratio >= 0.6 ? "Replacement may be worth comparing" : ageNumber < 8 && ratio <= 0.4 ? "Repair may be the lower-cost option" : "Compare reliability and warranty factors";
+  return <AppScreen><Header /><AppText variant="title">{appliance ? `${appliance.brand} ${appliance.name}` : "Appliance"}</AppText><AppText variant="body" color={colors.muted} className="mt-1">Repair vs Replace</AppText><Card className="mt-5"><View className="flex-row items-center gap-3"><Calculator color={colors.brand} size={24} /><AppText variant="heading">Use your local estimates</AppText></View><View className="mt-4 gap-3"><TextInput accessibilityLabel="Appliance age in years" keyboardType="decimal-pad" className="min-h-[54px] rounded-control border border-line bg-surface px-4 text-base text-ink dark:border-dark-line dark:bg-dark-surface dark:text-dark-ink" placeholder="Appliance age (years)" placeholderTextColor={colors.subtle} value={age} onChangeText={setAge} /><TextInput accessibilityLabel="Repair estimate" keyboardType="decimal-pad" className="min-h-[54px] rounded-control border border-line bg-surface px-4 text-base text-ink dark:border-dark-line dark:bg-dark-surface dark:text-dark-ink" placeholder="Local repair estimate" placeholderTextColor={colors.subtle} value={repairCost} onChangeText={setRepairCost} /><TextInput accessibilityLabel="Replacement estimate" keyboardType="decimal-pad" className="min-h-[54px] rounded-control border border-line bg-surface px-4 text-base text-ink dark:border-dark-line dark:bg-dark-surface dark:text-dark-ink" placeholder="Comparable replacement estimate" placeholderTextColor={colors.subtle} value={replacementCost} onChangeText={setReplacementCost} /></View></Card><Card className="mt-4 border-[#BBD3FF]"><AppText variant="caption">GUIDANCE</AppText><AppText variant="heading" color={colors.brand} className="mt-1">{recommendation}</AppText>{valid ? <AppText variant="body" className="mt-3">The repair estimate is {Math.round(ratio * 100)}% of the replacement estimate. A common comparison threshold is only a starting point—not a rule.</AppText> : <AppText variant="body" color={colors.muted} className="mt-3">FixLens will not invent local prices. Add a quote, comparable replacement price, and approximate age.</AppText>}</Card><View className="mt-5 flex-row gap-3 rounded-card border border-[#F5D69D] bg-caution-soft p-4 dark:bg-dark-caution-soft"><Lightbulb color={colors.caution} size={24} /><View className="flex-1"><AppText variant="label">Consider total ownership cost</AppText><AppText variant="caption" className="mt-1">Condition, energy use, remaining warranty, past failures, part availability, installation, and local labor can change the decision.</AppText></View></View><AppText variant="caption" align="center" className="mt-5">This comparison uses only the numbers you enter. It is not a quote, guarantee, or financial recommendation.</AppText></AppScreen>;
+}
+
+function ConnectedComparison() { const router = useRouter(); const subscription = useQuery(convexApi.subscriptions.current, {}); if (subscription === undefined) return <AppScreen><Header /><AppText variant="body" align="center" className="mt-16">Checking your plan…</AppText></AppScreen>; if (!subscription?.active || subscription.entitlement !== "pro") return <AppScreen footer={<Button label="View FixLens Pro" onPress={() => router.push("/subscription/paywall")} />}><Header /><View className="items-center py-16"><Crown color={colors.brand} size={52} /><AppText variant="title" align="center" className="mt-5">Repair vs Replace is a Pro feature</AppText><AppText variant="body" align="center" color={colors.muted} className="mt-2">Compare your local repair and replacement estimates with appliance age and ownership factors.</AppText></View></AppScreen>; return <Comparison />; }
+export default function RepairVsReplaceScreen() { return serviceReadiness.authentication && serviceReadiness.backend ? <ConnectedComparison /> : <Comparison />; }

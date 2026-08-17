@@ -1,0 +1,21 @@
+appId: com.fixlens.ai
+env:
+  NEW_EMAIL: ${MAESTRO_NEW_EMAIL}
+  NEW_PASSWORD: ${MAESTRO_NEW_PASSWORD}
+---
+- launchApp:
+    clearState: true
+- tapOn: "Get Started"
+- tapOn: "Create one"
+- tapOn: "Full name"
+- inputText: "Maestro Tester"
+- tapOn: "Email address"
+- inputText: ${NEW_EMAIL}
+- tapOn: "Password"
+- inputText: ${NEW_PASSWORD}
+- tapOn: "Confirm password"
+- inputText: ${NEW_PASSWORD}
+- tapOn: "I agree to the Terms and Privacy Policy"
+- tapOn: "Create Account"
+- assertVisible: "Verify your email"
+

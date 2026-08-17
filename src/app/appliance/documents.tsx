@@ -1,0 +1,18 @@
+import { useMutation, useQuery } from "convex/react";
+import * as Linking from "expo-linking";
+import { useLocalSearchParams } from "expo-router";
+import { ExternalLink, FileText, Trash2 } from "lucide-react-native";
+import { useState } from "react";
+import { Alert, Pressable, View } from "react-native";
+
+import { AppScreen } from "@/components/ui/app-screen";
+import { Button } from "@/components/ui/button";
+import { Header } from "@/components/ui/header";
+import { TextField } from "@/components/ui/text-field";
+import { AppText } from "@/components/ui/typography";
+import { serviceReadiness } from "@/config/env";
+import { colors } from "@/constants/design";
+import { convexApi } from "@/services/convex-references";
+
+function ConnectedDocuments({applianceId}:{applianceId:string}){const documents=useQuery(convexApi.documents.list,{applianceId});const add=useMutation(convexApi.documents.add);const remove=useMutation(convexApi.documents.remove);const[title,setTitle]=useState("");const[url,setUrl]=useState("");const[busy,setBusy]=useState(false);const save=async()=>{setBusy(true);try{await add({applianceId,title,url});setTitle("");setUrl("");}catch(error){Alert.alert("Document not added",error instanceof Error?error.message:"Use a valid HTTPS link.");}finally{setBusy(false);}};return <AppScreen><Header title="Documents & Manuals"/><AppText variant="body" color={colors.muted} className="mt-4">Save trusted manufacturer manuals, warranty pages, or service records as HTTPS links. FixLens does not verify their contents.</AppText><View className="mt-5 gap-3"><TextField placeholder="Document title" value={title} onChangeText={setTitle}/><TextField placeholder="https://manufacturer.example/manual" keyboardType="url" autoCapitalize="none" value={url} onChangeText={setUrl}/><Button label="Add document link" loading={busy} disabled={!title.trim()||!url.trim()} onPress={()=>{void save();}}/></View><AppText variant="heading" className="mt-8">Saved documents</AppText><View className="mt-3 gap-3">{documents?.map((document)=><View key={document._id} className="flex-row items-center rounded-card border border-line bg-surface p-4 dark:border-dark-line dark:bg-dark-surface"><FileText color={colors.brand} size={22}/><Pressable accessibilityRole="link" className="ml-3 flex-1" onPress={()=>{void Linking.openURL(document.url);}}><AppText variant="label">{document.title}</AppText><View className="mt-1 flex-row items-center gap-1"><ExternalLink color={colors.muted} size={14}/><AppText variant="caption" numberOfLines={1}>{document.url}</AppText></View></Pressable><Pressable accessibilityRole="button" accessibilityLabel={`Delete ${document.title}`} className="h-11 w-11 items-center justify-center" onPress={()=>Alert.alert("Delete document?",document.title,[{text:"Cancel",style:"cancel"},{text:"Delete",style:"destructive",onPress:()=>{void remove({documentId:document._id});}}])}><Trash2 color={colors.danger} size={19}/></Pressable></View>)}{documents&&!documents.length?<AppText variant="body" align="center" color={colors.muted} className="py-10">No saved documents yet.</AppText>:null}</View></AppScreen>;}
+export default function ApplianceDocumentsScreen(){const{applianceId}=useLocalSearchParams<{applianceId:string}>();if(!applianceId)return <AppScreen><Header title="Documents & Manuals"/><AppText variant="heading" align="center" className="mt-12">Appliance not found</AppText></AppScreen>;if(!serviceReadiness.authentication||!serviceReadiness.backend)return <AppScreen><Header title="Documents & Manuals"/><AppText variant="heading" align="center" className="mt-12">Backend configuration required</AppText></AppScreen>;return <ConnectedDocuments applianceId={applianceId}/>;}

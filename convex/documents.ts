@@ -1,0 +1,8 @@
+import { mutationGeneric, queryGeneric } from "convex/server";
+import { v } from "convex/values";
+import { requireOwned, requireUser } from "./lib/auth";
+
+function validUrl(value:string){try{const url=new URL(value);return url.protocol==="https:"&&value.length<=1000;}catch{return false;}}
+export const list=queryGeneric({args:{applianceId:v.id("appliances")},returns:v.any(),handler:async(ctx,args)=>{const user=await requireUser(ctx);const appliance=requireOwned(await ctx.db.get(args.applianceId),user._id);return ctx.db.query("applianceDocuments").withIndex("by_appliance",(q:any)=>q.eq("applianceId",appliance._id)).collect();}});
+export const add=mutationGeneric({args:{applianceId:v.id("appliances"),title:v.string(),url:v.string()},returns:v.id("applianceDocuments"),handler:async(ctx,args)=>{const user=await requireUser(ctx);const appliance=requireOwned(await ctx.db.get(args.applianceId),user._id);const title=args.title.trim();const url=args.url.trim();if(!title||title.length>120||!validUrl(url))throw new Error("Enter a title and a valid HTTPS link");const existing=await ctx.db.query("applianceDocuments").withIndex("by_appliance",(q:any)=>q.eq("applianceId",appliance._id)).collect();if(existing.length>=20)throw new Error("Document limit reached");const now=Date.now();return ctx.db.insert("applianceDocuments",{ownerId:user._id,applianceId:appliance._id,title,url,createdAt:now,updatedAt:now});}});
+export const remove=mutationGeneric({args:{documentId:v.id("applianceDocuments")},returns:v.null(),handler:async(ctx,args)=>{const user=await requireUser(ctx);const document=requireOwned(await ctx.db.get(args.documentId),user._id);await ctx.db.delete(document._id);return null;}});

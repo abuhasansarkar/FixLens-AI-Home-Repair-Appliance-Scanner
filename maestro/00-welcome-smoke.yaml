@@ -1,0 +1,12 @@
+appId: com.fixlens.ai
+---
+- launchApp:
+    clearState: true
+- assertVisible: "Fix anything with a photo."
+- assertVisible: "Get Started"
+- tapOn: "Get Started"
+- assertVisible: "Welcome to FixLens"
+- assertVisible: "Sign In"
+- tapOn: "Create one"
+- assertVisible: "Create your account"
+

@@ -4,35 +4,68 @@
     "slug": "FixLens",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/icon.png",
+    "icon": "./assets/images/fixlens/app-icon.png",
     "scheme": "fixlens",
+    "platforms": [
+      "ios",
+      "android"
+    ],
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/images/fixlens/app-icon.png",
+      "bundleIdentifier": "com.fixlens.ai",
+      "usesAppleSignIn": true,
+      "supportsTablet": false,
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
+      "package": "com.fixlens.ai",
+      "versionCode": 1,
+      "blockedPermissions": [
+        "android.permission.RECORD_AUDIO"
+      ],
       "adaptiveIcon": {
-        "backgroundColor": "#E6F4FE",
-        "foregroundImage": "./assets/images/android-icon-foreground.png",
-        "backgroundImage": "./assets/images/android-icon-background.png",
-        "monochromeImage": "./assets/images/android-icon-monochrome.png"
+        "backgroundColor": "#075FFF",
+        "foregroundImage": "./assets/images/fixlens/app-icon-foreground.png",
+        "monochromeImage": "./assets/images/fixlens/app-icon-monochrome.png"
       },
       "predictiveBackGestureEnabled": false
-    },
-    "web": {
-      "output": "static",
-      "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
       "expo-router",
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
-          "image": "./assets/images/splash-icon.png",
-          "imageWidth": 76
+          "backgroundColor": "#075FFF",
+          "image": "./assets/images/fixlens/app-icon-foreground.png",
+          "imageWidth": 128,
+          "resizeMode": "contain"
         }
-      ]
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Allow FixLens to take photos of appliances and home problems for diagnosis.",
+          "recordAudioAndroid": false,
+          "barcodeScannerEnabled": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow FixLens to choose photos of appliances and home problems for diagnosis.",
+          "cameraPermission": "Allow FixLens to take photos for diagnosis."
+        }
+      ],
+      "expo-notifications",
+      "expo-secure-store",
+      "@clerk/expo",
+      "expo-apple-authentication",
+      "@clerk/expo-google-signin",
+      "@sentry/react-native"
     ],
     "experiments": {
       "typedRoutes": true,
