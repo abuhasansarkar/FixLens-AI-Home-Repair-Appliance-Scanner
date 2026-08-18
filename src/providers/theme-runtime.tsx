@@ -10,10 +10,23 @@ export type AppearancePreference = "system" | "light" | "dark";
 export function ThemeRuntime({ children, serverAppearance }: PropsWithChildren<{ serverAppearance?: string }>) {
   const { setColorScheme } = useColorScheme();
   useEffect(() => {
+    let isMounted = true;
     if (serverAppearance === "light" || serverAppearance === "dark" || serverAppearance === "system") {
-      setColorScheme(serverAppearance); Appearance.setColorScheme(serverAppearance === "system" ? "unspecified" : serverAppearance); void AsyncStorage.setItem(APPEARANCE_KEY, serverAppearance); return;
+      setColorScheme(serverAppearance);
+      Appearance.setColorScheme(serverAppearance === "system" ? "unspecified" : serverAppearance);
+      void AsyncStorage.setItem(APPEARANCE_KEY, serverAppearance);
+      return;
     }
-    AsyncStorage.getItem(APPEARANCE_KEY).then((value) => { const preference = value === "light" || value === "dark" ? value : "system"; setColorScheme(preference); Appearance.setColorScheme(preference === "system" ? "unspecified" : preference); });
+    AsyncStorage.getItem(APPEARANCE_KEY).then((value) => {
+      if (!isMounted) return;
+      const preference = value === "light" || value === "dark" ? value : "system";
+      setColorScheme(preference);
+      Appearance.setColorScheme(preference === "system" ? "unspecified" : preference);
+    });
+
+    return () => {
+      isMounted = false;
+    };
   }, [serverAppearance, setColorScheme]);
   return children;
 }

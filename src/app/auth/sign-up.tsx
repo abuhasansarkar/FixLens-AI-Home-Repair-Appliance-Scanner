@@ -15,8 +15,6 @@ import { env, serviceReadiness } from "@/config/env";
 import { colors } from "@/constants/design";
 import { authenticationErrorMessage, isAuthenticationCancellation } from "@/utils/auth-errors";
 
-WebBrowser.maybeCompleteAuthSession();
-
 function ConfiguredSignUp() {
   const router = useRouter();
   const { signUp, errors, fetchStatus } = useSignUp();
@@ -30,6 +28,7 @@ function ConfiguredSignUp() {
   const [localError, setLocalError] = useState<string>();
 
   useEffect(() => {
+    WebBrowser.maybeCompleteAuthSession();
     void WebBrowser.warmUpAsync();
     return () => {
       void WebBrowser.coolDownAsync();

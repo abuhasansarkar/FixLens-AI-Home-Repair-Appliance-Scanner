@@ -41,11 +41,25 @@ export function OnboardingProvider({ children, storageScope = "developer", serve
   const storageKey = `${STORAGE_KEY_PREFIX}.${storageScope}`;
 
   useEffect(() => {
+    let isMounted = true;
     AsyncStorage.getItem(storageKey)
       .then((stored) => {
-        if (stored) { try { setState({ ...initialState, ...JSON.parse(stored) }); } catch { void AsyncStorage.removeItem(storageKey); } }
+        if (!isMounted) return;
+        if (stored) {
+          try {
+            setState({ ...initialState, ...JSON.parse(stored) });
+          } catch {
+            void AsyncStorage.removeItem(storageKey);
+          }
+        }
       })
-      .finally(() => setLocalHydrated(true));
+      .finally(() => {
+        if (isMounted) setLocalHydrated(true);
+      });
+
+    return () => {
+      isMounted = false;
+    };
   }, [storageKey]);
 
   const effectiveState = useMemo<OnboardingState>(() => serverState?.onboardingComplete ? {

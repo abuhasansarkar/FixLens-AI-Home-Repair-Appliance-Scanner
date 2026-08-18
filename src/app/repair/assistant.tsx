@@ -16,6 +16,8 @@ import { colors } from "@/constants/design";
 import { useRepair } from "@/features/repairs/repair-context";
 import { convexApi } from "@/services/convex-references";
 
+import { blobToArrayBuffer } from "@/utils/blob";
+
 type Message = { role: "user" | "assistant"; text: string; createdAt: number };
 
 function ConnectedAssistant() {
@@ -43,7 +45,23 @@ function ConnectedAssistant() {
     const question = text.trim();
     if (!question || busy || replies >= replyLimit) return;
     setText(""); setBusy(true); setError(undefined); setPendingQuestion(question);
-    try { let attachmentId:string|undefined;if(photo){const blob=await(await fetch(photo.uri)).blob();const target=await generateUploadUrl({sessionId:active.sessionId!});const response=await fetch(target,{method:"POST",headers:{"Content-Type":"image/jpeg"},body:blob});if(!response.ok)throw new Error("Photo upload failed");const uploaded=await response.json() as {storageId?:string};if(!uploaded.storageId)throw new Error("Photo upload failed");attachmentId=await completeUpload({sessionId:active.sessionId!,storageId:uploaded.storageId,mime:"image/jpeg",size:blob.size,width:photo.width,height:photo.height});await normalizeAttachment({attachmentId});} await chat({ sessionId: active.sessionId!, question, currentStep: active.currentStep, attachmentId }); setPhoto(undefined); }
+    try {
+      let attachmentId: string | undefined;
+      if (photo) {
+        const response = await fetch(photo.uri);
+        const blob = await response.blob();
+        const bytes = await blobToArrayBuffer(blob);
+        const target = await generateUploadUrl({ sessionId: active.sessionId! });
+        const uploadResponse = await fetch(target, { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: blob });
+        if (!uploadResponse.ok) throw new Error("Photo upload failed");
+        const uploaded = await uploadResponse.json() as { storageId?: string };
+        if (!uploaded.storageId) throw new Error("Photo upload failed");
+        attachmentId = await completeUpload({ sessionId: active.sessionId!, storageId: uploaded.storageId, mime: "image/jpeg", size: bytes.byteLength, width: photo.width, height: photo.height });
+        await normalizeAttachment({ attachmentId });
+      }
+      await chat({ sessionId: active.sessionId!, question, currentStep: active.currentStep, attachmentId });
+      setPhoto(undefined);
+    }
     catch (cause) { setError(cause instanceof Error && cause.message.includes("limit") ? "This diagnosis has reached its five-reply limit." : "The assistant couldn’t reply. No reply was consumed; try again."); }
     finally { setBusy(false); setPendingQuestion(undefined); }
   };

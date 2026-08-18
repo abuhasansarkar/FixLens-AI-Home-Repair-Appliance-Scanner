@@ -31,7 +31,13 @@ export function ScanProvider({ children, storageScope }: PropsWithChildren<{ sto
   useEffect(() => { AsyncStorage.getItem(storageKey).then((value) => { if (value) { try { const saved = JSON.parse(value) as ScanState; dispatch({ type: "hydrate", state: { ...initialState, ...saved, images: Array.isArray(saved.images) ? saved.images.slice(0, 3) : [] } }); } catch { void AsyncStorage.removeItem(storageKey); } } }).finally(() => setHydrated(true)); }, [storageKey]);
   useEffect(() => { if (hydrated) void AsyncStorage.setItem(storageKey, JSON.stringify(state)); }, [hydrated, state, storageKey]);
   const addImage = useCallback(async (uri: string, purpose: ScanImage["purpose"] = "problem") => {
-    if (state.images.length >= 3) throw new Error("A diagnosis can include at most three images.");
+    if (state.images.length >= 3) {
+      if (purpose === "problem") {
+        dispatch({ type: "reset" });
+      } else {
+        throw new Error("A diagnosis can include at most three images.");
+      }
+    }
     const inspected = await ImageManipulator.manipulateAsync(uri, [], { compress: 0.9, format: ImageManipulator.SaveFormat.JPEG });
     const resize = Math.max(inspected.width, inspected.height) > env.maxImageLongEdge ? [{ resize: inspected.width >= inspected.height ? { width: env.maxImageLongEdge } : { height: env.maxImageLongEdge } }] : [];
     const optimized = await ImageManipulator.manipulateAsync(inspected.uri, resize, { compress: 0.82, format: ImageManipulator.SaveFormat.JPEG });

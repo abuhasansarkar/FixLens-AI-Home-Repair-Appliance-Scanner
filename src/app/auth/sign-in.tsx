@@ -18,8 +18,6 @@ import { colors } from "@/constants/design";
 import { useOnboarding } from "@/features/onboarding/onboarding-context";
 import { authenticationErrorMessage, isAuthenticationCancellation } from "@/utils/auth-errors";
 
-WebBrowser.maybeCompleteAuthSession();
-
 function AuthLayout({
   onEmail,
   onApple,
@@ -103,6 +101,7 @@ function ConfiguredSignIn() {
   const [localError, setLocalError] = useState<string>();
 
   useEffect(() => {
+    WebBrowser.maybeCompleteAuthSession();
     void WebBrowser.warmUpAsync();
     return () => {
       void WebBrowser.coolDownAsync();

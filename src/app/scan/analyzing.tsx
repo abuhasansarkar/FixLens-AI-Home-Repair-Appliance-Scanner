@@ -13,7 +13,7 @@ import { serviceReadiness } from "@/config/env";
 import { colors } from "@/constants/design";
 import { useScan } from "@/features/diagnosis/scan-context";
 import { convexApi } from "@/services/convex-references";
-
+import { blobToArrayBuffer } from "@/utils/blob";
 import { safeGoBack } from "@/utils/navigation";
 
 const stages = ["Preparing private photos", "Reading visible information", "Checking likely causes", "Evaluating safety", "Preparing repair guide"];
@@ -54,27 +54,38 @@ function ConnectedAnalysis() {
       if (!scan.sessionId) scan.setSession(sessionId);
       setStage(1);
       for (const image of scan.images.slice(scan.uploadedImageCount)) {
-        const blob = await (await fetch(image.uri)).blob();
-        const bytes = await blob.arrayBuffer();
+        const response = await fetch(image.uri);
+        const blob = await response.blob();
+        const bytes = await blobToArrayBuffer(blob);
         const checksum = hex(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes));
         const uploadUrl = await generateUploadUrl({ sessionId });
         const uploadResponse = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": image.mime }, body: blob });
         if (!uploadResponse.ok) throw new Error("A photo could not be uploaded");
         const uploaded = await uploadResponse.json() as { storageId?: string };
         if (!uploaded.storageId) throw new Error("The upload did not return a storage id");
-        const imageId = await completeUpload({ sessionId, storageId: uploaded.storageId, purpose: image.purpose, mime: image.mime, size: blob.size, width: image.width, height: image.height, checksum });
+        const imageId = await completeUpload({ sessionId, storageId: uploaded.storageId, purpose: image.purpose, mime: image.mime, size: bytes.byteLength, width: image.width, height: image.height, checksum });
         await normalizeImage({ imageId });
         scan.markUploaded();
       }
       setStage(2);
-      setStage(3);
-      const assessment = await analyze({ sessionId, idempotencyKey: Crypto.randomUUID(), clarification: scan.clarification?.trim() || undefined });
+      const assessmentPromise = analyze({ sessionId, idempotencyKey: Crypto.randomUUID(), clarification: scan.clarification?.trim() || undefined });
+      const stageTimer1 = setTimeout(() => setStage(3), 1200);
+      const stageTimer2 = setTimeout(() => setStage(4), 2500);
+      const assessment = await assessmentPromise;
+      clearTimeout(stageTimer1);
+      clearTimeout(stageTimer2);
       setStage(5);
       if (assessment.outcome === "needs_evidence" && assessment.evidenceRequest) router.replace({ pathname: "/scan/more-info", params: { instructions: assessment.evidenceRequest.instructions, purpose: assessment.evidenceRequest.purpose } });
       else if (assessment.outcome === "needs_clarification") router.replace({ pathname: "/scan/clarify", params: { question: assessment.question ?? "What happens when you try to use it?" } });
-      else if (assessment.outcome === "unsupported") router.replace({ pathname: "/diagnosis/unsupported", params: { reason: assessment.reason ?? "FixLens could not produce a reliable assessment." } });
-      else router.replace({ pathname: "/diagnosis/result", params: { sessionId, safetyLevel: assessment.safetyLevel } });
+      else if (assessment.outcome === "unsupported") {
+        scan.reset();
+        router.replace({ pathname: "/diagnosis/unsupported", params: { reason: assessment.reason ?? "FixLens could not produce a reliable assessment." } });
+      } else {
+        scan.reset();
+        router.replace({ pathname: "/diagnosis/result", params: { sessionId, safetyLevel: assessment.safetyLevel } });
+      }
     } catch (cause) {
+      console.warn("Diagnosis analysis failed:", cause);
       if (cause instanceof Error && cause.message.toLowerCase().includes("allowance")) { router.replace("/subscription/limit"); return; }
       setError("We couldn’t complete this diagnosis. Your allowance was not consumed; check your connection and try again.");
     }

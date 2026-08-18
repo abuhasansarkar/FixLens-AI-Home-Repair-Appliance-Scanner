@@ -20,7 +20,7 @@ async function send(body: unknown) {
 export async function requestDiagnosis(input: { description?: string; clarification?: string; diyLevel?: string; images: InputImage[]; model?: string }) {
   if (!input.images.length || input.images.length > 3) throw new Error("Diagnosis requires one to three images");
   const started = Date.now();
-  const model = input.model ?? process.env.OPENAI_MODEL_DIAGNOSE ?? "gpt-5.6-terra";
+  const model = (input.model ?? process.env.OPENAI_MODEL_DIAGNOSE ?? "gpt-4o-mini").toLowerCase();
   const payload = await send({
     model,
     store: false,
@@ -36,7 +36,7 @@ export async function requestDiagnosis(input: { description?: string; clarificat
 
 export async function requestRepairChat(input: { result: unknown; currentStep?: unknown; question: string; image?: InputImage; model?: string }) {
   const started = Date.now();
-  const model = input.model ?? process.env.OPENAI_MODEL_CHAT ?? "gpt-5.6-luna";
+  const model = (input.model ?? process.env.OPENAI_MODEL_CHAT ?? "gpt-4o-mini").toLowerCase();
   const payload = await send({
     model,
     store: false,
@@ -53,7 +53,7 @@ export async function requestRepairChat(input: { result: unknown; currentStep?: 
 
 export async function requestApplianceExtraction(input: { image: InputImage; model?: string }) {
   const started = Date.now();
-  const model = input.model ?? process.env.OPENAI_MODEL_EXTRACT ?? "gpt-5.6-luna";
+  const model = (input.model ?? process.env.OPENAI_MODEL_EXTRACT ?? "gpt-4o-mini").toLowerCase();
   const payload = await send({
     model,
     store: false,

@@ -13,6 +13,7 @@ import { AppText } from "@/components/ui/typography";
 import { env, serviceReadiness } from "@/config/env";
 import { colors } from "@/constants/design";
 import { convexApi } from "@/services/convex-references";
+import { blobToArrayBuffer } from "@/utils/blob";
 
 function digestHex(buffer: ArrayBuffer) { return Array.from(new Uint8Array(buffer), (value) => value.toString(16).padStart(2, "0")).join(""); }
 
@@ -36,13 +37,13 @@ export default function ApplianceAnalyzingScreen() {
       const optimized = await ImageManipulator.manipulateAsync(inspected.uri, resize, { compress: 0.82, format: ImageManipulator.SaveFormat.JPEG });
       const sessionId = await createSession({ idempotencyKey: Crypto.randomUUID() });
       const blob = await (await fetch(optimized.uri)).blob();
-      const bytes = await blob.arrayBuffer();
+      const bytes = await blobToArrayBuffer(blob);
       const target = await uploadUrl({ sessionId });
       const response = await fetch(target, { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: blob });
       if (!response.ok) throw new Error("Upload failed");
       const uploaded = await response.json() as { storageId?: string };
       if (!uploaded.storageId) throw new Error("Upload did not return storage");
-      const imageId = await completeUpload({ sessionId, storageId: uploaded.storageId, purpose: mode === "label" ? "label" : "problem", mime: "image/jpeg", size: blob.size, width: optimized.width, height: optimized.height, checksum: digestHex(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes)) });
+      const imageId = await completeUpload({ sessionId, storageId: uploaded.storageId, purpose: mode === "label" ? "label" : "problem", mime: "image/jpeg", size: bytes.byteLength, width: optimized.width, height: optimized.height, checksum: digestHex(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes)) });
       await normalizeImage({ imageId });
       const result = await extract({ sessionId });
       router.replace({ pathname: "/appliance/detected", params: { name: result.name, brand: result.brand ?? "", model: result.model ?? "", serial: result.serial ?? "", confidence: String(result.confidence), imageUri: optimized.uri, scanSessionId: sessionId } });

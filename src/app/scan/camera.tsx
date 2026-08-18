@@ -24,11 +24,11 @@ export default function CameraScreen() {
   const [isFocused, setIsFocused] = useState(false);
 
   useEffect(() => {
-    if (newSession === "1" && !resetHandled.current) {
+    if ((newSession === "1" || purpose === "problem") && !resetHandled.current) {
       resetHandled.current = true;
       reset();
     }
-  }, [newSession, reset]);
+  }, [newSession, purpose, reset]);
 
   useFocusEffect(useCallback(() => {
     setIsFocused(true);

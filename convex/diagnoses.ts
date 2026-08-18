@@ -73,7 +73,7 @@ export const completeImageUpload = mutationGeneric({
     if (!["draft", "needs_evidence"].includes(session.status) || session.imageCount >= maxImages) throw new Error("This diagnosis cannot accept another image");
     if (args.size <= 0 || args.size > 8_000_000 || args.width < 1 || args.height < 1 || Math.max(args.width, args.height) > maxLongEdge || !/^[a-f0-9]{64}$/i.test(args.checksum)) throw new Error("Image metadata is outside accepted limits");
     const stored = await ctx.db.system.get(args.storageId);
-    if (!stored || stored.size !== args.size || (stored.contentType && stored.contentType !== args.mime)) { if (stored) await ctx.storage.delete(args.storageId); throw new Error("Uploaded image metadata did not match storage"); }
+    if (!stored || stored.size !== args.size || (stored.contentType && !stored.contentType.toLowerCase().startsWith(args.mime.toLowerCase()))) { if (stored) await ctx.storage.delete(args.storageId); throw new Error("Uploaded image metadata did not match storage"); }
     const now = Date.now();
     const imageId = await ctx.db.insert("diagnosisImages", { ownerId: user._id, sessionId: session._id, storageId: args.storageId, purpose: args.purpose, mime: args.mime, size: args.size, width: args.width, height: args.height, checksum: args.checksum, uploadState: "pending_processing", createdAt: now, updatedAt: now });
     await ctx.db.patch(session._id, { imageCount: session.imageCount + 1, updatedAt: now });
