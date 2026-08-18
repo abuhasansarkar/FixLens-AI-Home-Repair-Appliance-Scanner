@@ -1,10 +1,10 @@
-import { internalMutationGeneric, mutationGeneric, queryGeneric } from "convex/server";
+import { internalMutationGeneric, internalQueryGeneric, mutationGeneric, queryGeneric } from "convex/server";
 import { v } from "convex/values";
 import { requireUser } from "./lib/auth";
 
 const inactiveEventTypes = new Set(["EXPIRATION", "REFUND", "SUBSCRIPTION_PAUSED"]);
 
-export const verificationContext = queryGeneric({
+export const verificationContext = internalQueryGeneric({
   args: {},
   returns: v.object({ appUserId: v.string(), shouldVerify: v.boolean() }),
   handler: async (ctx) => {
@@ -25,7 +25,7 @@ export const current = queryGeneric({
   },
 });
 
-export const applyVerifiedCustomer = mutationGeneric({
+export const applyVerifiedCustomer = internalMutationGeneric({
   args: { active: v.boolean(), productId: v.optional(v.string()), expiresAt: v.optional(v.number()) },
   returns: v.null(),
   handler: async (ctx, args) => {

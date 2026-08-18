@@ -15,10 +15,7 @@ type ChatStart = { userMessageId: GenericId<"aiMessages">; assistantMessageId: G
 type RevenueCatCustomer = { subscriber?: { entitlements?: Record<string, { expires_date?: string | null; product_identifier?: string }> } };
 
 function encodeBase64(buffer: ArrayBuffer) {
-  const bytes = new Uint8Array(buffer);
-  let binary = "";
-  for (let index = 0; index < bytes.length; index += 0x8000) binary += String.fromCharCode(...bytes.subarray(index, Math.min(index + 0x8000, bytes.length)));
-  return btoa(binary);
+  return Buffer.from(buffer).toString("base64");
 }
 
 const reserve = makeFunctionReference<"mutation", { sessionId: GenericId<"diagnosisSessions">; idempotencyKey: string }, GenericId<"usageLedger">>("usage:reserve");
@@ -75,14 +72,14 @@ export const analyze = actionGeneric({
       const envelope = diagnosisResponseSchema.parse(response.result);
       if (envelope.outcome !== "diagnosis" || !envelope.result) {
         const stored = await ctx.runMutation(storeFollowUp, { sessionId: args.sessionId, ledgerId, outcome: envelope.outcome === "diagnosis" ? "unsupported" : envelope.outcome, evidenceRequest: envelope.evidenceRequest ?? undefined, question: envelope.clarificationQuestion ?? undefined, reason: envelope.unsupportedReason ?? undefined });
-        void ctx.runMutation(recordUsage, { sessionId: args.sessionId, requestType: "diagnosis_follow_up", model: response.model, inputTokens: response.inputTokens, outputTokens: response.outputTokens, latencyMs: response.latencyMs, providerRequestId: response.providerRequestId, status: stored.outcome }).catch(() => undefined);
+        await ctx.runMutation(recordUsage, { sessionId: args.sessionId, requestType: "diagnosis_follow_up", model: response.model, inputTokens: response.inputTokens, outputTokens: response.outputTokens, latencyMs: response.latencyMs, providerRequestId: response.providerRequestId, status: stored.outcome }).catch(() => undefined);
         if (stored.outcome === "needs_evidence") return { outcome: stored.outcome, evidenceRequest: stored.followUp as { reason: string; instructions: string; purpose: "problem" | "label" | "evidence"; remainingImages: number } };
         if (stored.outcome === "needs_clarification") return { outcome: stored.outcome, question: String(stored.followUp.question ?? "") };
         return { outcome: "unsupported", reason: String(stored.followUp.reason ?? "This problem is not supported.") };
       }
       const result = enforceSafeResult(envelope.result, (input.session.description ?? "") + " " + (args.clarification ?? ""));
       const resultId = await ctx.runMutation(finalizeResult, { sessionId: args.sessionId, ledgerId, result, safetyLevel: result.safety.level });
-      void ctx.runMutation(recordUsage, { sessionId: args.sessionId, requestType: "diagnosis", model: response.model, inputTokens: response.inputTokens, outputTokens: response.outputTokens, latencyMs: response.latencyMs, providerRequestId: response.providerRequestId, status: "succeeded" }).catch(() => undefined);
+      await ctx.runMutation(recordUsage, { sessionId: args.sessionId, requestType: "diagnosis", model: response.model, inputTokens: response.inputTokens, outputTokens: response.outputTokens, latencyMs: response.latencyMs, providerRequestId: response.providerRequestId, status: "succeeded" }).catch(() => undefined);
       return { outcome: "diagnosis", resultId, safetyLevel: result.safety.level };
     } catch (error) {
       await Promise.allSettled([ctx.runMutation(transition, { ledgerId, state: "released", reason: "provider_or_system_failure" }), ctx.runMutation(markFailed, { sessionId: args.sessionId })]);
@@ -110,7 +107,7 @@ export const chat = actionGeneric({
       const detected = classifyHazard(`${args.question} ${response.text}`);
       const text = permitsRepairSteps(detected) ? response.text : "Stop the repair and do not continue troubleshooting. Keep clear of the hazard and contact a qualified professional. If there is immediate danger, contact local emergency services from a safe location.";
       await ctx.runMutation(completeChat, { assistantMessageId: start.assistantMessageId, text, model: response.model });
-      void ctx.runMutation(recordUsage, { sessionId: args.sessionId, requestType: "repair_chat", model: response.model, inputTokens: response.inputTokens, outputTokens: response.outputTokens, latencyMs: response.latencyMs, providerRequestId: response.providerRequestId, status: "succeeded" }).catch(() => undefined);
+      await ctx.runMutation(recordUsage, { sessionId: args.sessionId, requestType: "repair_chat", model: response.model, inputTokens: response.inputTokens, outputTokens: response.outputTokens, latencyMs: response.latencyMs, providerRequestId: response.providerRequestId, status: "succeeded" }).catch(() => undefined);
       if (start.attachment) await ctx.runMutation(removeAttachment,{attachmentId:start.attachment.id}).catch(()=>undefined);
       return { text };
     } catch (error) {
@@ -136,7 +133,7 @@ export const extractAppliance = actionGeneric({
       const result = response.result;
       if (!result.name.trim() || !result.category.trim() || result.confidence < 0 || result.confidence > 1) throw new Error("Appliance extraction was invalid");
       status = "complete";
-      void ctx.runMutation(recordUsage, { sessionId: args.sessionId, requestType: "appliance_extraction", model: response.model, inputTokens: response.inputTokens, outputTokens: response.outputTokens, latencyMs: response.latencyMs, providerRequestId: response.providerRequestId, status: "succeeded" }).catch(() => undefined);
+      await ctx.runMutation(recordUsage, { sessionId: args.sessionId, requestType: "appliance_extraction", model: response.model, inputTokens: response.inputTokens, outputTokens: response.outputTokens, latencyMs: response.latencyMs, providerRequestId: response.providerRequestId, status: "succeeded" }).catch(() => undefined);
       return result;
     } finally {
       await ctx.runMutation(finishApplianceScan, { sessionId: args.sessionId, status });

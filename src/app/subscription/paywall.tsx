@@ -36,13 +36,18 @@ export default function PaywallScreen() {
   const buy = async () => {
     const chosen = packageByPeriod[selected];
     if (!serviceReadiness.purchases || !chosen) {
-      Alert.alert("Purchases aren’t configured", "Add the RevenueCat public key and store products, then restart the development build.");
+      Alert.alert("Purchases aren't configured", "Add the RevenueCat public key and store products, then restart the development build.");
       return;
     }
     setLoading(true);
     try {
       const { customerInfo } = await purchaseSubscription(chosen);
-      if (customerInfo.entitlements.active.pro) safeGoBack(router, "/tabs/home");
+      // Check for "pro" entitlement by ID, then fall back to any active entitlement
+      // in case the RevenueCat entitlement identifier differs from the expected string.
+      const isActive =
+        customerInfo.entitlements.active["pro"] !== undefined ||
+        Object.keys(customerInfo.entitlements.active).length > 0;
+      if (isActive) safeGoBack(router, "/tabs/home");
     } catch (error) {
       const cancelled = typeof error === "object" && error !== null && "userCancelled" in error && error.userCancelled;
       if (!cancelled) Alert.alert("Purchase not completed", "No charge was made. Please try again.");
@@ -53,13 +58,21 @@ export default function PaywallScreen() {
 
   const restore = async () => {
     if (!serviceReadiness.purchases) {
-      Alert.alert("Purchases aren’t configured", "Add a RevenueCat public key before restoring purchases.");
+      Alert.alert("Purchases aren't configured", "Add a RevenueCat public key before restoring purchases.");
       return;
     }
     setLoading(true);
     try {
       const info = await restoreSubscriptions();
-      Alert.alert(info.entitlements.active.pro ? "Pro restored" : "No purchase found", info.entitlements.active.pro ? "Your Pro access is active." : "We couldn’t find an active Pro subscription for this store account.");
+      const hasPro = info.entitlements.active["pro"] !== undefined;
+      const hasAnyActive = Object.keys(info.entitlements.active).length > 0;
+      const restored = hasPro || hasAnyActive;
+      Alert.alert(
+        restored ? "Pro restored" : "No purchase found",
+        restored
+          ? "Your Pro access is active."
+          : "We couldn't find an active Pro subscription for this store account."
+      );
     } catch {
       Alert.alert("Restore failed", "Check your connection and try again.");
     } finally {

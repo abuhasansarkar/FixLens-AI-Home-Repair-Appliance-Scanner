@@ -52,8 +52,12 @@ function ConnectedAssistant() {
         const blob = await response.blob();
         const bytes = await blobToArrayBuffer(blob);
         const target = await generateUploadUrl({ sessionId: active.sessionId! });
-        const uploadResponse = await fetch(target, { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: blob });
-        if (!uploadResponse.ok) throw new Error("Photo upload failed");
+        const uploadResponse = await fetch(target, { method: "POST", headers: { "Content-Type": "image/jpeg" }, body: bytes });
+        if (!uploadResponse.ok) {
+          const detail = await uploadResponse.text().catch(() => "");
+          console.warn("Assistant photo upload error:", uploadResponse.status, detail);
+          throw new Error(`Photo upload failed (${uploadResponse.status}): ${detail}`);
+        }
         const uploaded = await uploadResponse.json() as { storageId?: string };
         if (!uploaded.storageId) throw new Error("Photo upload failed");
         attachmentId = await completeUpload({ sessionId: active.sessionId!, storageId: uploaded.storageId, mime: "image/jpeg", size: bytes.byteLength, width: photo.width, height: photo.height });

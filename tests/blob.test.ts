@@ -1,5 +1,6 @@
+import { createHash } from "node:crypto";
 import { describe, expect, it, vi } from "vitest";
-import { blobToArrayBuffer } from "../src/utils/blob";
+import { blobToArrayBuffer, sha256Hex } from "../src/utils/blob";
 
 describe("blobToArrayBuffer", () => {
   it("converts a standard Blob to an ArrayBuffer when arrayBuffer() is present", async () => {
@@ -51,5 +52,24 @@ describe("blobToArrayBuffer", () => {
     const buffer = await blobToArrayBuffer(blob);
     expect(buffer).toBeInstanceOf(ArrayBuffer);
     expect(new TextDecoder().decode(buffer)).toBe(text);
+  });
+});
+
+describe("sha256Hex", () => {
+  it("computes SHA-256 hex matching Node crypto", () => {
+    const inputs = [
+      "",
+      "FixLens test image binary data 12345",
+      "The quick brown fox jumps over the lazy dog",
+      new Uint8Array([0, 1, 2, 3, 254, 255, 128, 64]),
+    ];
+
+    for (const input of inputs) {
+      const bytes = typeof input === "string" ? new TextEncoder().encode(input) : input;
+      const expected = createHash("sha256").update(bytes).digest("hex");
+      const actual = sha256Hex(bytes);
+      expect(actual).toBe(expected);
+      expect(actual).toMatch(/^[a-f0-9]{64}$/);
+    }
   });
 });

@@ -13,14 +13,10 @@ import { serviceReadiness } from "@/config/env";
 import { colors } from "@/constants/design";
 import { useScan } from "@/features/diagnosis/scan-context";
 import { convexApi } from "@/services/convex-references";
-import { blobToArrayBuffer } from "@/utils/blob";
+import { blobToArrayBuffer, sha256Hex } from "@/utils/blob";
 import { safeGoBack } from "@/utils/navigation";
 
 const stages = ["Preparing private photos", "Reading visible information", "Checking likely causes", "Evaluating safety", "Preparing repair guide"];
-
-function hex(buffer: ArrayBuffer) {
-  return Array.from(new Uint8Array(buffer), (value) => value.toString(16).padStart(2, "0")).join("");
-}
 
 function AnalysisVisual({ stage, error, retry }: { stage: number; error?: string; retry?: () => void }) {
   const router = useRouter();
@@ -57,10 +53,14 @@ function ConnectedAnalysis() {
         const response = await fetch(image.uri);
         const blob = await response.blob();
         const bytes = await blobToArrayBuffer(blob);
-        const checksum = hex(await Crypto.digest(Crypto.CryptoDigestAlgorithm.SHA256, bytes));
+        const checksum = sha256Hex(bytes);
         const uploadUrl = await generateUploadUrl({ sessionId });
-        const uploadResponse = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": image.mime }, body: blob });
-        if (!uploadResponse.ok) throw new Error("A photo could not be uploaded");
+        const uploadResponse = await fetch(uploadUrl, { method: "POST", headers: { "Content-Type": image.mime }, body: bytes });
+        if (!uploadResponse.ok) {
+          const detail = await uploadResponse.text().catch(() => "");
+          console.warn("Convex upload error:", uploadResponse.status, detail);
+          throw new Error(`A photo could not be uploaded (${uploadResponse.status}): ${detail}`);
+        }
         const uploaded = await uploadResponse.json() as { storageId?: string };
         if (!uploaded.storageId) throw new Error("The upload did not return a storage id");
         const imageId = await completeUpload({ sessionId, storageId: uploaded.storageId, purpose: image.purpose, mime: image.mime, size: bytes.byteLength, width: image.width, height: image.height, checksum });
@@ -86,8 +86,9 @@ function ConnectedAnalysis() {
       }
     } catch (cause) {
       console.warn("Diagnosis analysis failed:", cause);
-      if (cause instanceof Error && cause.message.toLowerCase().includes("allowance")) { router.replace("/subscription/limit"); return; }
-      setError("We couldn’t complete this diagnosis. Your allowance was not consumed; check your connection and try again.");
+      if (cause instanceof Error && (cause.message.toLowerCase().includes("allowance") || cause.message.toLowerCase().includes("exhausted"))) { router.replace("/subscription/limit"); return; }
+      const message = cause instanceof Error ? cause.message : String(cause);
+      setError(message.includes("network") || message.includes("connection") || message.includes("fetch") ? "Connection issue. Your allowance was not consumed; check your network and try again." : message);
     }
   }, [analyze, completeUpload, createSession, generateUploadUrl, normalizeImage, router, scan]);
 
